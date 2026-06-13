@@ -32,6 +32,7 @@ class MealPlanEntry:
     description: Optional[str] = None
     uid: Optional[str] = None
     start: Optional[datetime] = None
+    recipe_url: Optional[str] = None  # link to the Plan to Eat recipe, if any
 
 
 def fetch_feed(url: str, *, http: Optional[httpx.Client] = None, timeout: float = 30.0) -> str:
@@ -79,6 +80,11 @@ def parse_feed(text: str, *, default_slot: str = DEFAULT_SLOT) -> List[MealPlanE
         description = str(raw_desc).strip() if raw_desc not in (None, "") else None
         raw_uid = comp.get("UID")
         uid = str(raw_uid) if raw_uid else None
+        raw_url = comp.get("URL")
+        recipe_url = str(raw_url).strip() if raw_url else None
+        # The "All" feed often only carries the recipe link in DESCRIPTION.
+        if not recipe_url and description and "/recipes/" in description:
+            recipe_url = description.split()[0]
         entries.append(
             MealPlanEntry(
                 date=date_str,
@@ -87,6 +93,7 @@ def parse_feed(text: str, *, default_slot: str = DEFAULT_SLOT) -> List[MealPlanE
                 description=description,
                 uid=uid,
                 start=start,
+                recipe_url=recipe_url,
             )
         )
     return entries

@@ -27,6 +27,9 @@ SLOT_KEYWORDS = {
 }
 _COURSE_PREFIXES = ("breakfast", "brunch", "lunch", "dinner", "supper", "snack", "dessert")
 _SEPARATORS = (":", "-", "—")
+# Plan to Eat commonly prefixes planned meals with a single-letter course code,
+# e.g. "B: eggs", "L: soup", "D: tacos", "S: cookies".
+_SHORT_CODES = {"b": "breakfast", "l": "lunch", "d": "dinner", "s": "snack"}
 
 
 def normalize_title(title: Optional[str]) -> str:
@@ -43,6 +46,9 @@ def clean_title(title: Optional[str]) -> str:
             rest = text[len(prefix) :].lstrip()
             if rest[:1] in _SEPARATORS:
                 return rest[1:].strip()
+    # Single-letter course code, e.g. "D: Tacos".
+    if len(text) >= 2 and text[0].lower() in _SHORT_CODES and text[1] in _SEPARATORS:
+        return text[2:].strip()
     return text
 
 
@@ -52,10 +58,14 @@ def infer_slot(
     default_slot: str = DEFAULT_SLOT,
 ) -> str:
     """Infer a meal slot from a course keyword, else the event time, else the default."""
-    low = (title or "").lower()
+    text = (title or "").strip()
+    low = text.lower()
     for slot in SLOT_ORDER:
         if any(kw in low for kw in SLOT_KEYWORDS[slot]):
             return slot
+    # Single-letter course code prefix, e.g. "B: ...", "D: ...".
+    if len(text) >= 2 and text[0].lower() in _SHORT_CODES and text[1] in _SEPARATORS:
+        return _SHORT_CODES[text[0].lower()]
     if start is not None and (start.hour or start.minute):
         hour = start.hour
         if hour < 11:

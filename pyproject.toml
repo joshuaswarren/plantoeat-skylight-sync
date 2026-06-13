@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "plantoeat-skylight-sync"
-version = "0.1.0"
+version = "0.2.0"
 description = "One-way sync of a Plan to Eat meal plan into Skylight Meals (recipes + sittings)"
 readme = "README.md"
 requires-python = ">=3.11"

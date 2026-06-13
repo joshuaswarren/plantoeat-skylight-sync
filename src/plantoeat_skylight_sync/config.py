@@ -41,6 +41,30 @@ def _default_state_path() -> Path:
     return Path(base) / "plantoeat-skylight-sync" / "state.json"
 
 
+def load_dotenv(path: str) -> None:
+    """Load ``KEY=VALUE`` lines from a .env file into the environment.
+
+    Existing environment variables win (``setdefault``). Surrounding single/double
+    quotes are stripped. Lines are parsed literally (no shell interpretation), so
+    values may safely contain characters like ``;`` or ``#`` mid-value.
+    """
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except (FileNotFoundError, OSError):
+        return
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        if key:
+            os.environ.setdefault(key, value)
+
+
 @dataclass
 class SyncConfig:
     ical_url: str
@@ -53,6 +77,7 @@ class SyncConfig:
     default_slot: str
     allow_delete: bool
     state_path: Path
+    fetch_recipe_content: bool = True
 
     @classmethod
     def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "SyncConfig":
@@ -72,4 +97,5 @@ class SyncConfig:
             default_slot=source.get("SYNC_DEFAULT_SLOT", DEFAULT_SLOT),
             allow_delete=_bool(source.get("SYNC_ALLOW_DELETE")),
             state_path=Path(state_override) if state_override else _default_state_path(),
+            fetch_recipe_content=_bool(source.get("SYNC_FETCH_RECIPE_CONTENT", "true")),
         )

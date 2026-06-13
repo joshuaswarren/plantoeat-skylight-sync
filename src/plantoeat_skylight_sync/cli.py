@@ -9,7 +9,7 @@ from typing import Optional, Tuple
 import typer
 from pyskylight import SkylightClient
 
-from .config import SyncConfig
+from .config import SyncConfig, load_dotenv
 from .errors import SyncError
 from .ical import fetch_feed, parse_feed
 from .state import SyncState
@@ -20,6 +20,16 @@ app = typer.Typer(
     help="Sync a Plan to Eat meal plan into Skylight Meals (one-way).",
     no_args_is_help=True,
 )
+
+
+@app.callback()
+def _main(
+    env_file: Optional[str] = typer.Option(
+        None, "--env-file", help="Load credentials/config from a .env file before running."
+    ),
+) -> None:
+    if env_file:
+        load_dotenv(env_file)
 
 
 def _build_client(cfg: SyncConfig) -> SkylightClient:
@@ -55,6 +65,7 @@ def _execute(dry_run: bool, allow_delete_override: Optional[bool]) -> None:
             window_end=window_end,
             dry_run=dry_run,
             allow_delete=allow_delete,
+            fetch_content=cfg.fetch_recipe_content,
         )
     except SyncError as exc:
         typer.echo(json.dumps({"ok": False, "error": str(exc)}))

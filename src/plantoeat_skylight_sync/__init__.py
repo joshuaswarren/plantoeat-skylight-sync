@@ -7,7 +7,7 @@ from .ical import MealPlanEntry, fetch_feed, parse_feed
 from .state import SyncState
 from .sync import SyncAction, Syncer, SyncReport
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
