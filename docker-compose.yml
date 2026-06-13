@@ -1,0 +1,12 @@
+services:
+  pte-skylight-sync:
+    build: .
+    image: plantoeat-skylight-sync
+    container_name: plantoeat-skylight-sync
+    env_file: .env
+    environment:
+      SYNC_INTERVAL: "10800" # 3 hours
+      SYNC_STATE_PATH: /data/state.json
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
