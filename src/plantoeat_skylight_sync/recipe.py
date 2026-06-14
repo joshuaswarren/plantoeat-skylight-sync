@@ -117,10 +117,68 @@ def fetch_recipe_content(
             raise SyncError(f"Failed to fetch recipe {recipe_url}: {exc}") from exc
         if resp.status_code >= 400:
             raise SyncError(f"Recipe {recipe_url} returned HTTP {resp.status_code}")
-        return parse_recipe_html(resp.text, recipe_url)
+        content = parse_recipe_html(resp.text, recipe_url)
+        # Recipes "clipped" into Plan to Eat from another site store only a
+        # "visit source" link for the directions. Follow that source one hop and
+        # pull the steps from its schema.org JSON-LD so every recipe has directions.
+        if (
+            _is_placeholder_directions(content.directions)
+            and content.source_url
+            and "plantoeat.com" not in content.source_url
+        ):
+            sourced = fetch_source_directions(content.source_url, http=client)
+            if sourced:
+                content.directions = sourced
+        return content
     finally:
         if owns:
             client.close()
+
+
+def _collect_steps(value: object) -> List[str]:
+    out: List[str] = []
+    if isinstance(value, str):
+        text = _strip_html(value).strip()
+        if text:
+            out.append(text)
+    elif isinstance(value, list):
+        for item in value:
+            out.extend(_collect_steps(item))
+    elif isinstance(value, dict):
+        if "HowToSection" in str(value.get("@type", "")):
+            out.extend(_collect_steps(value.get("itemListElement") or []))
+        else:
+            raw = value.get("text") or value.get("name")
+            if raw:
+                stripped = _strip_html(str(raw)).strip()
+                if stripped:
+                    out.append(stripped)
+    return out
+
+
+def _render_instructions(value: object) -> Optional[str]:
+    steps = _collect_steps(value)
+    if not steps:
+        return None
+    return "\n".join(f"{i}. {step}" for i, step in enumerate(steps, 1))
+
+
+def fetch_source_directions(source_url: str, *, http: httpx.Client) -> Optional[str]:
+    """Best-effort: pull directions from the original source site's recipe JSON-LD.
+
+    Returns ``None`` (never raises) if the source can't be fetched or has no
+    machine-readable instructions, so a flaky external site never fails a sync.
+    """
+    try:
+        resp = http.get(source_url, headers={"User-Agent": USER_AGENT})
+    except httpx.HTTPError:
+        return None
+    if resp.status_code >= 400:
+        return None
+    node = _find_recipe_ldjson(resp.text)
+    if not node:
+        return None
+    return _render_instructions(node.get("recipeInstructions"))
 
 
 def _is_placeholder_directions(directions: Optional[str]) -> bool:

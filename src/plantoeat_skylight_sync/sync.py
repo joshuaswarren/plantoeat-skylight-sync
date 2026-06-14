@@ -29,7 +29,7 @@ import httpx
 from .errors import SyncError
 from .ical import MealPlanEntry
 from .mapping import choose_category_id, dedup_key, normalize_title
-from .recipe import fetch_recipe_content, format_description, has_real_content
+from .recipe import fetch_recipe_content, format_description
 from .state import SyncState
 
 CREATE_RECIPE = "create_recipe"
@@ -194,16 +194,15 @@ class Syncer:
             existing_recipe.id if existing_recipe else None
         )
 
+        # Fetch full content once per recipe (tracked in state), then leave it alone.
         new_desc = ""
-        if recipe_http is not None and entry.recipe_url:
-            existing_desc = existing_recipe.description if existing_recipe else None
-            if recipe_id is None or not has_real_content(existing_desc):
-                try:
-                    new_desc = format_description(
-                        fetch_recipe_content(entry.recipe_url, http=recipe_http)
-                    )
-                except SyncError:
-                    new_desc = ""
+        if recipe_http is not None and entry.recipe_url and norm not in self.state.content:
+            try:
+                new_desc = format_description(
+                    fetch_recipe_content(entry.recipe_url, http=recipe_http)
+                )
+            except SyncError:
+                new_desc = ""
 
         if recipe_id is None:
             actions.append(SyncAction(CREATE_RECIPE, entry.date, entry.slot, entry.title))
@@ -217,16 +216,15 @@ class Syncer:
                 recipe_id = recipe.id
                 self.state.record_recipe(norm, recipe_id)
                 existing_recipes[norm] = recipe
-        elif (
-            new_desc
-            and existing_recipe is not None
-            and not has_real_content(existing_recipe.description)
-        ):
+                if new_desc:
+                    self.state.record_content(norm, recipe_id)
+        elif new_desc and recipe_id is not None:
             actions.append(SyncAction(UPDATE_RECIPE, entry.date, entry.slot, entry.title))
             if not dry_run:
                 existing_recipes[norm] = self.client.update_recipe(
                     self.frame_id, recipe_id, description=new_desc
                 )
+                self.state.record_content(norm, recipe_id)
         return recipe_id
 
     def _reconcile_deletes(

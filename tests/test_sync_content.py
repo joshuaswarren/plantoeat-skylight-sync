@@ -61,17 +61,36 @@ def test_update_existing_bare_recipe(monkeypatch):
     assert "Ingredients:" in client.updated_recipes[0][1]["description"]
 
 
-def test_no_update_when_content_already_present(monkeypatch):
+def test_no_fetch_when_content_already_synced(monkeypatch):
     def boom(url, http=None):
-        raise AssertionError("should not fetch when content already present")
+        raise AssertionError("should not fetch once content has been synced")
 
     monkeypatch.setattr(sync, "fetch_recipe_content", boom)
     client = FakeClient(recipes=[_recipe("55", "Tacos", "Ingredients:\n- beef")])
-    report = sync.Syncer(client, "7", SyncState()).reconcile(
+    state = SyncState()
+    state.record_content("tacos", "55")  # already fetched in a prior run
+    report = sync.Syncer(client, "7", state).reconcile(
         [_entry()], window_start=WS, window_end=WE, dry_run=False
     )
     assert report.summary()["updated_recipes"] == 0
     assert client.updated_recipes == []
+
+
+def test_content_fetch_is_idempotent(monkeypatch):
+    calls = {"n": 0}
+
+    def once(url, http=None):
+        calls["n"] += 1
+        return RecipeContent(ingredients=["beef"], directions="Cook.", source_url="http://s")
+
+    monkeypatch.setattr(sync, "fetch_recipe_content", once)
+    client = FakeClient(recipes=[_recipe("55", "Tacos", "https://app.plantoeat.com/recipes/1")])
+    state = SyncState()
+    syncer = sync.Syncer(client, "7", state)
+    syncer.reconcile([_entry()], window_start=WS, window_end=WE, dry_run=False)
+    syncer.reconcile([_entry()], window_start=WS, window_end=WE, dry_run=False)
+    assert calls["n"] == 1  # fetched once, then state suppresses re-fetch
+    assert len(client.updated_recipes) == 1
 
 
 def test_fetch_disabled_skips_content(monkeypatch):

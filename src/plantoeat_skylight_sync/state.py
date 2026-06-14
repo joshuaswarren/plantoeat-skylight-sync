@@ -20,6 +20,8 @@ from typing import Any, Dict, Optional
 class SyncState:
     sittings: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     recipes: Dict[str, str] = field(default_factory=dict)
+    # normalized title -> recipe id, for recipes whose full content was already fetched
+    content: Dict[str, str] = field(default_factory=dict)
     path: Optional[Path] = None
 
     @classmethod
@@ -34,6 +36,7 @@ class SyncState:
         return cls(
             sittings=dict(data.get("sittings") or {}),
             recipes=dict(data.get("recipes") or {}),
+            content=dict(data.get("content") or {}),
             path=p,
         )
 
@@ -42,12 +45,18 @@ class SyncState:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(
-            json.dumps({"sittings": self.sittings, "recipes": self.recipes}, indent=2),
+            json.dumps(
+                {"sittings": self.sittings, "recipes": self.recipes, "content": self.content},
+                indent=2,
+            ),
             encoding="utf-8",
         )
 
     def record_recipe(self, normalized_title: str, recipe_id: str) -> None:
         self.recipes[normalized_title] = str(recipe_id)
+
+    def record_content(self, normalized_title: str, recipe_id: str) -> None:
+        self.content[normalized_title] = str(recipe_id)
 
     def record_sitting(self, key: str, **info: Any) -> None:
         self.sittings[key] = info
