@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from html import unescape as _html_unescape
 from typing import List, Optional
 
 import httpx
@@ -47,7 +48,7 @@ def recipe_id_from_url(url: Optional[str]) -> Optional[str]:
 
 
 def _strip_html(fragment: str) -> str:
-    return _WS_RE.sub(" ", _TAG_RE.sub(" ", fragment or "")).strip()
+    return _WS_RE.sub(" ", _html_unescape(_TAG_RE.sub(" ", fragment or ""))).strip()
 
 
 def _find_recipe_ldjson(html: str) -> Optional[dict]:
@@ -86,9 +87,9 @@ def parse_recipe_html(html: str, recipe_url: Optional[str] = None) -> RecipeCont
     ingredients: List[str] = []
     raw = ld.get("recipeIngredient") or ld.get("ingredients")
     if isinstance(raw, list):
-        ingredients = [str(x).strip() for x in raw if str(x).strip()]
+        ingredients = [_html_unescape(str(x).strip()) for x in raw if str(x).strip()]
     elif isinstance(raw, str) and raw.strip():
-        ingredients = [line.strip() for line in raw.splitlines() if line.strip()]
+        ingredients = [_html_unescape(line.strip()) for line in raw.splitlines() if line.strip()]
     source = None
     match = _VISIT_SOURCE_RE.search(html)
     if match:
