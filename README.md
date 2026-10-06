@@ -1,5 +1,7 @@
 # plantoeat-skylight-sync
 
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink)](https://github.com/sponsors/joshuaswarren)
+
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 ![status: alpha](https://img.shields.io/badge/status-alpha-orange)
@@ -100,3 +102,11 @@ pre-commit run --all-files
 Unofficial; not affiliated with Plan to Eat or Skylight. Personal use, your own
 accounts only. The Plan to Eat feed URL and Skylight token are secrets — never commit
 them. [MIT License](LICENSE).
+
+## Support
+
+Every bit of support helps keep plantoeat-skylight-sync alive and free. If you are able, [sponsor on GitHub](https://github.com/sponsors/joshuaswarren) or send a Lightning donation to `joshuaswarren@strike.me` to directly fund continued development and new integrations.
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?style=for-the-badge)](https://github.com/sponsors/joshuaswarren)
+
+If financial support is not an option, you can still make a big difference: [star the repo](https://github.com/joshuaswarren/plantoeat-skylight-sync), share it, or recommend it to a colleague. Word of mouth is how most people find plantoeat-skylight-sync.
